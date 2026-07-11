@@ -9,7 +9,7 @@ on: [pull_request]
 env:
 #   AWS_REGION: us-east-1
   BUCKET_NAME: fer1035-github-labs
-  TEST_PATH: ./README.md
+  TEST_PATH: ./test_files/aws-network/
 
 jobs:
   pr:
@@ -67,9 +67,10 @@ jobs:
         run: |
           BUCKET_NAME=${{ env.BUCKET_NAME }}
           TEST_PATH=${{ env.TEST_PATH }}
-          if [ -f "$TEST_PATH" ]; then
+          if [ -f "$TEST_PATH" ] || [ -d "$TEST_PATH" ]; then
             echo "Uploading $TEST_PATH to S3 bucket: $BUCKET_NAME"
-            aws s3 cp "$TEST_PATH" s3://$BUCKET_NAME/
+            # aws s3 cp "$TEST_PATH" s3://$BUCKET_NAME/ --recursive
+            aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/
             echo "Uploaded $TEST_PATH to S3 bucket: $BUCKET_NAME"
           else
             echo "File $TEST_PATH does not exist. Skipping upload."
