@@ -10,6 +10,8 @@ env:
 #   AWS_REGION: us-east-1
   BUCKET_NAME: fer1035-github-labs
   TEST_PATH: ./test_files/aws-network/
+  LOG_PATH: ./logs.txt
+  LIST_PATH: ./list.txt
 
 jobs:
   pr:
@@ -63,15 +65,41 @@ jobs:
             echo "S3 bucket already exists: $BUCKET_NAME"
           fi
 
+      - name: Delete and recreate log file and list file
+        run: |
+          LOG_PATH=${{ env.LOG_PATH }}
+          LIST_PATH=${{ env.LIST_PATH }}
+          if [ -f "$LOG_PATH" ]; then
+            echo "Deleting existing log file: $LOG_PATH"
+            rm "$LOG_PATH"
+          fi
+          echo "Creating new log file: $LOG_PATH"
+          touch "$LOG_PATH"
+          if [ -f "$LIST_PATH" ]; then
+            echo "Deleting existing list file: $LIST_PATH"
+            rm "$LIST_PATH"
+          fi
+          echo "Creating new list file: $LIST_PATH"
+          touch "$LIST_PATH"
+  
       - name: Upload to S3 bucket
         run: |
           BUCKET_NAME=${{ env.BUCKET_NAME }}
           TEST_PATH=${{ env.TEST_PATH }}
+          LOG_PATH=${{ env.LOG_PATH }}
           if [ -f "$TEST_PATH" ] || [ -d "$TEST_PATH" ]; then
             echo "Uploading $TEST_PATH to S3 bucket: $BUCKET_NAME"
             # aws s3 cp "$TEST_PATH" s3://$BUCKET_NAME/ --recursive
-            aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/
+            aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ | tee -a "$LOG_PATH"
             echo "Uploaded $TEST_PATH to S3 bucket: $BUCKET_NAME"
           else
             echo "File $TEST_PATH does not exist. Skipping upload."
           fi
+
+      - name: Parse log file and print uploaded files to list file
+        run: |
+          LOG_PATH=${{ env.LOG_PATH }}
+          LIST_PATH=${{ env.LIST_PATH }}
+          grep "upload:" "$LOG_PATH" | awk '{print $2}' > "$LIST_PATH"
+          echo "Uploaded files list saved to: $LIST_PATH"
+          cat "$LIST_PATH"
