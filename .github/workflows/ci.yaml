@@ -12,13 +12,13 @@ env:
   TEST_PATH: ./README.md
 
 jobs:
-  build-and-test:
+  pr:
     runs-on: ubuntu-latest
 
     steps:
 
-      # - name: Check out repository code
-      #   uses: actions/checkout@v4
+      - name: Check out repository code
+        uses: actions/checkout@v7
 
       # - name: Log message
       #   run: echo "Hello World! The workflow is running successfully."
@@ -45,7 +45,7 @@ jobs:
 
       - name: Print AWS STS identity
         run: aws sts get-caller-identity
-        
+
       - name: Get PWD amd list files
         run: |
           echo "Current working directory: $(pwd)"
