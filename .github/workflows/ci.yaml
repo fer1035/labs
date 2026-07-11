@@ -90,7 +90,7 @@ jobs:
           if [ -f "$TEST_PATH" ] || [ -d "$TEST_PATH" ]; then
             echo "Uploading $TEST_PATH to S3 bucket: $BUCKET_NAME"
             # aws s3 cp "$TEST_PATH" s3://$BUCKET_NAME/ --recursive
-            aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ | tee -a "$LOG_PATH"
+            aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ | grep "upload: " | tee -a "$LOG_PATH"
             echo "Uploaded $TEST_PATH to S3 bucket: $BUCKET_NAME"
           else
             echo "File $TEST_PATH does not exist. Skipping upload."
