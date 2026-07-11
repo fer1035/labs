@@ -100,6 +100,7 @@ jobs:
         run: |
           LOG_PATH=${{ env.LOG_PATH }}
           LIST_PATH=${{ env.LIST_PATH }}
-          grep "upload:" "$LOG_PATH" | awk '{print $2}' > "$LIST_PATH"
+          grep -F "upload: " "$LOG_PATH" | awk '{print $2}' > "$LIST_PATH"
           echo "Uploaded files list saved to: $LIST_PATH"
           cat "$LIST_PATH"
+ 
