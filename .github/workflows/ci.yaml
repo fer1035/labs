@@ -45,6 +45,12 @@ jobs:
 
       - name: Print AWS STS identity
         run: aws sts get-caller-identity
+        
+      - name: Get PWD amd list files
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "Listing files in the current directory:"
+          ls -larth
 
       - name: Check if S3 bucket exists
         run: |
