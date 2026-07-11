@@ -95,6 +95,7 @@ jobs:
           else
             echo "File $TEST_PATH does not exist. Skipping upload."
           fi
+          cat "$LOG_PATH"
 
       - name: Parse log file and print uploaded files to list file
         run: |
