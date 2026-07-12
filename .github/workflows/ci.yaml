@@ -126,12 +126,12 @@ jobs:
           LOG_PATH=${{ env.LOG_PATH }}
           LIST_PATH=${{ env.LIST_PATH }}
           POSTLIST_PATH=${{ env.POSTLIST_PATH }}
-          grep -E "Copied|Deleted" "$LOG_PATH" | awk -F: '{ print $2 }' | awk '{ print "/" $1 }' > "$LIST_PATH"
+          grep -E "Copied|Deleted" "$LOG_PATH" | awk -F: '{ print $2 }' | awk '{ $1 = "/" $1 "; print }' > "$LIST_PATH"
           # while IFS= read -r line; do
           #   echo "/$line" >> "$POSTLIST_PATH"
           # done < "$LIST_PATH"
           echo "Uploaded files list saved to: $LIST_PATH"
-          cat "$POSTLIST_PATH"
+          cat "$LIST_PATH"
 
       # - name: Initiate CloudFront invalidation for uploaded files
       #   run: |
