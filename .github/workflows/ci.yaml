@@ -120,7 +120,7 @@ jobs:
           LIST_PATH=${{ env.LIST_PATH }}
           cat "$LOG_PATH"
           # grep -oE "test_files\/[^[:space:]]+" "$LOG_PATH" > "$LIST_PATH"
-          grep -oE "\*[[:space:]]+[\w\-\.]+\:.+-Transferred\:" "$LOG_PATH" > "$LIST_PATH"
+          grep -oE "[^\*[:space:]]+[\w\-\.]+[^:]" "$LOG_PATH" > "$LIST_PATH"
           echo "Uploaded files list saved to: $LIST_PATH"
           cat "$LIST_PATH"
  
