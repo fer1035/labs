@@ -11,7 +11,6 @@ env:
   BUCKET_NAME: fer1035-github-labs
   TEST_PATH: ./test_files/aws-network/
   LOG_PATH: ./logs.txt
-  PRELIST_PATH: ./prelist.txt
   LIST_PATH: ./list.txt
 
 jobs:
@@ -74,7 +73,6 @@ jobs:
       - name: Delete and recreate files
         run: |
           LOG_PATH=${{ env.LOG_PATH }}
-          PRELIST_PATH=${{ env.PRELIST_PATH }}
           LIST_PATH=${{ env.LIST_PATH }}
           if [ -f "$LOG_PATH" ]; then
             echo "Deleting existing log file: $LOG_PATH"
@@ -82,12 +80,6 @@ jobs:
           fi
           echo "Creating new log file: $LOG_PATH"
           touch "$LOG_PATH"
-          if [ -f "$PRELIST_PATH" ]; then
-            echo "Deleting existing prelist file: $PRELIST_PATH"
-            rm "$PRELIST_PATH"
-          fi
-          echo "Creating new prelist file: $PRELIST_PATH"
-          touch "$PRELIST_PATH"
           if [ -f "$LIST_PATH" ]; then
             echo "Deleting existing list file: $LIST_PATH"
             rm "$LIST_PATH"
@@ -127,12 +119,9 @@ jobs:
       - name: Parse log file and print uploaded files to list file
         run: |
           LOG_PATH=${{ env.LOG_PATH }}
-          PRELIST_PATH=${{ env.PRELIST_PATH }}
           LIST_PATH=${{ env.LIST_PATH }}
           # grep -oE "test_files\/[^[:space:]]+" "$LOG_PATH" > "$LIST_PATH"
-          grep -E "\: Copied|\: Deleted" "$LOG_PATH" | awk '{print $1}' | awk -F: '{print $2}' > "$PRELIST_PATH"
-          grep -oE "[^\*[:space:]]*[a-zA-Z0-9_\.\-\/]+[\.a-zA-Z0-9]*" "$PRELIST_PATH" > "$LIST_PATH"
+          grep -E "Copied|Deleted" "$LOG_PATH" | awk -F: '{print $2}' > "$LIST_PATH"
           echo "Uploaded files list saved to: $LIST_PATH"
-          cat "$PRELIST_PATH"
           cat "$LIST_PATH"
  
