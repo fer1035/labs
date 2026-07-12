@@ -69,4 +69,3 @@ No modules.
 | <a name="output_public_subnet_1"></a> [public\_subnet\_1](#output\_public\_subnet\_1) | Public Subnet 1 ID. |
 | <a name="output_public_subnet_2"></a> [public\_subnet\_2](#output\_public\_subnet\_2) | Public Subnet 2 ID. |
 | <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | VPC ID. |
-
