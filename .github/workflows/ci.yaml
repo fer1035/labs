@@ -7,7 +7,7 @@ on: [pull_request]
 #     branches: [ main ]
 
 env:
-#   AWS_REGION: us-east-1
+  AWS_REGION: us-east-1
   BUCKET_NAME: fer1035-github-labs
   TEST_PATH: ./test_files/aws-network/
   LOG_PATH: ./logs.txt
@@ -21,6 +21,11 @@ jobs:
 
       - name: Check out repository code
         uses: actions/checkout@v7
+        # with:
+        #   fetch-depth: 0
+
+      # - name: Restore Git timestamps
+      #   uses: chetan/git-restore-mtime-action@v2
 
       # - name: Log message
       #   run: echo "Hello World! The workflow is running successfully."
@@ -43,7 +48,7 @@ jobs:
         with:
           aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Print AWS STS identity
         run: aws sts get-caller-identity
@@ -81,6 +86,18 @@ jobs:
           fi
           echo "Creating new list file: $LIST_PATH"
           touch "$LIST_PATH"
+
+      - name: Apt install rclone
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone
+
+      - name: Configure rclone for S3
+        run: |
+          BUCKET_NAME=${{ env.BUCKET_NAME }}
+          AWS_REGION=${{ env.AWS_REGION }}
+          rclone config create uploads-s3 s3 provider AWS env_auth true region $AWS_REGION
+          rclone config show uploads-s3
   
       - name: Upload to S3 bucket
         run: |
@@ -90,7 +107,8 @@ jobs:
           if [ -f "$TEST_PATH" ] || [ -d "$TEST_PATH" ]; then
             echo "Uploading $TEST_PATH to S3 bucket: $BUCKET_NAME"
             # aws s3 cp "$TEST_PATH" s3://$BUCKET_NAME/ --recursive
-            aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ | tee -a "$LOG_PATH"
+            # aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ --exact-timestamps --delete | tee -a "$LOG_PATH"
+            aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ --delete | tee -a "$LOG_PATH"
             echo "Uploaded $TEST_PATH to S3 bucket: $BUCKET_NAME"
           else
             echo "File $TEST_PATH does not exist. Skipping upload."
