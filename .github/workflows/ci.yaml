@@ -7,9 +7,11 @@ on: [pull_request]
 #     branches: [ main ]
 
 env:
-#   AWS_REGION: us-east-1
+  AWS_REGION: us-east-1
   BUCKET_NAME: fer1035-github-labs
   TEST_PATH: ./test_files/aws-network/
+  LOG_PATH: ./logs.txt
+  LIST_PATH: ./list.txt
 
 jobs:
   pr:
@@ -19,12 +21,8 @@ jobs:
 
       - name: Check out repository code
         uses: actions/checkout@v7
-
-      # - name: Log message
-      #   run: echo "Hello World! The workflow is running successfully."
-
-      # - name: Run a basic command
-      #   run: node --version
+        # with:
+        #   fetch-depth: 0
 
       # - name: Install AWS CLI
       #   run: |
@@ -41,7 +39,7 @@ jobs:
         with:
           aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Print AWS STS identity
         run: aws sts get-caller-identity
@@ -63,15 +61,68 @@ jobs:
             echo "S3 bucket already exists: $BUCKET_NAME"
           fi
 
+      - name: Delete and recreate files
+        run: |
+          LOG_PATH=${{ env.LOG_PATH }}
+          LIST_PATH=${{ env.LIST_PATH }}
+          POSTLIST_PATH=${{ env.POSTLIST_PATH }}
+          if [ -f "$LOG_PATH" ]; then
+            echo "Deleting existing log file: $LOG_PATH"
+            rm "$LOG_PATH"
+          fi
+          echo "Creating new log file: $LOG_PATH"
+          touch "$LOG_PATH"
+          if [ -f "$LIST_PATH" ]; then
+            echo "Deleting existing list file: $LIST_PATH"
+            rm "$LIST_PATH"
+          fi
+          echo "Creating new list file: $LIST_PATH"
+          touch "$LIST_PATH"
+
+      - name: Apt install rclone
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone
+
+      - name: Configure rclone for S3
+        run: |
+          AWS_REGION=${{ env.AWS_REGION }}
+          rclone config create uploads-s3 s3 provider AWS env_auth true region $AWS_REGION
+          # rclone config show uploads-s3
+  
       - name: Upload to S3 bucket
         run: |
           BUCKET_NAME=${{ env.BUCKET_NAME }}
           TEST_PATH=${{ env.TEST_PATH }}
+          LOG_PATH=${{ env.LOG_PATH }}
           if [ -f "$TEST_PATH" ] || [ -d "$TEST_PATH" ]; then
             echo "Uploading $TEST_PATH to S3 bucket: $BUCKET_NAME"
-            # aws s3 cp "$TEST_PATH" s3://$BUCKET_NAME/ --recursive
-            aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/
+            # aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ --delete
+            # rclone sync "$TEST_PATH" uploads-s3:"$BUCKET_NAME" --checksum --progress --log-level INFO | tee -a "$LOG_PATH"
+            rclone sync "$TEST_PATH" uploads-s3:"$BUCKET_NAME" --checksum --log-level INFO 2>&1 | tee -a "$LOG_PATH"
             echo "Uploaded $TEST_PATH to S3 bucket: $BUCKET_NAME"
           else
             echo "File $TEST_PATH does not exist. Skipping upload."
           fi
+
+      - name: Parse log file and print uploaded files to list file
+        run: |
+          LOG_PATH=${{ env.LOG_PATH }}
+          LIST_PATH=${{ env.LIST_PATH }}
+          grep -E "Copied|Deleted" "$LOG_PATH" | awk -F: '{ print $2 }' | awk '{ $1 = "/" $1; print }' > "$LIST_PATH"
+          echo "Uploaded files list saved to: $LIST_PATH"
+          cat "$LIST_PATH"
+
+      # - name: Initiate CloudFront invalidation for uploaded files
+      #   run: |
+      #     LIST_PATH=${{ env.LIST_PATH }}
+      #     DISTRIBUTION_ID=${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      #     if [ -f "$LIST_PATH" ] && [ ! -s "$LIST_PATH" ]; then
+      #       echo "Initiating CloudFront invalidation for distribution ID: $DISTRIBUTION_ID"
+      #       # aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+      #       aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "$(cat $LIST_PATH | tr '\n' ' ')"
+      #       echo "CloudFront invalidation initiated."
+      #     else
+      #       echo "Paths list does not exist. Skipping CloudFront invalidation."
+      #     fi
+ 
