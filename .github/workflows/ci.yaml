@@ -130,7 +130,7 @@ jobs:
           PRELIST_PATH=${{ env.PRELIST_PATH }}
           LIST_PATH=${{ env.LIST_PATH }}
           # grep -oE "test_files\/[^[:space:]]+" "$LOG_PATH" > "$LIST_PATH"
-          grep -E "\-Transferred:" "$LOG_PATH" | awk '{print $2}' | awk -F: '{print $1}' > "$PRELIST_PATH"
+          grep -E "\: Copied|\: Deleted" "$LOG_PATH" | awk '{print $1}' | awk -F: '{print $2}' > "$PRELIST_PATH"
           grep -oE "[^\*[:space:]]*[a-zA-Z0-9_\.\-\/]+[\.a-zA-Z0-9]*" "$PRELIST_PATH" > "$LIST_PATH"
           echo "Uploaded files list saved to: $LIST_PATH"
           cat "$PRELIST_PATH"
