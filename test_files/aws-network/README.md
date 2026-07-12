@@ -1,4 +1,4 @@
-# terraform-aws-network-c
+# terraform-aws-network
 
 Terraform module to create a VPC and other corresponding networking components. The default is to create a fully private VPC with no outbound Internet connectivity.
 
