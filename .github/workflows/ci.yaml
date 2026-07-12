@@ -12,6 +12,7 @@ env:
   TEST_PATH: ./test_files/aws-network/
   LOG_PATH: ./logs.txt
   LIST_PATH: ./list.txt
+  POSTLIST_PATH: ./postlist.txt
 
 jobs:
   pr:
@@ -74,6 +75,7 @@ jobs:
         run: |
           LOG_PATH=${{ env.LOG_PATH }}
           LIST_PATH=${{ env.LIST_PATH }}
+          POSTLIST_PATH=${{ env.POSTLIST_PATH }}
           if [ -f "$LOG_PATH" ]; then
             echo "Deleting existing log file: $LOG_PATH"
             rm "$LOG_PATH"
@@ -86,6 +88,12 @@ jobs:
           fi
           echo "Creating new list file: $LIST_PATH"
           touch "$LIST_PATH"
+          if [ -f "$POSTLIST_PATH" ]; then
+            echo "Deleting existing postlist file: $POSTLIST_PATH"
+            rm "$POSTLIST_PATH"
+          fi
+          echo "Creating new postlist file: $POSTLIST_PATH"
+          touch "$POSTLIST_PATH"
 
       - name: Apt install rclone
         run: |
@@ -105,9 +113,7 @@ jobs:
           LOG_PATH=${{ env.LOG_PATH }}
           if [ -f "$TEST_PATH" ] || [ -d "$TEST_PATH" ]; then
             echo "Uploading $TEST_PATH to S3 bucket: $BUCKET_NAME"
-            # aws s3 cp "$TEST_PATH" s3://$BUCKET_NAME/ --recursive
-            # aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ --exact-timestamps --delete | tee -a "$LOG_PATH"
-            # aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ --delete | tee -a "$LOG_PATH"
+            # aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ --delete
             # rclone sync "$TEST_PATH" uploads-s3:"$BUCKET_NAME" --checksum --progress --log-level INFO | tee -a "$LOG_PATH"
             rclone sync "$TEST_PATH" uploads-s3:"$BUCKET_NAME" --checksum --log-level INFO 2>&1 | tee -a "$LOG_PATH"
             echo "Uploaded $TEST_PATH to S3 bucket: $BUCKET_NAME"
@@ -119,8 +125,24 @@ jobs:
         run: |
           LOG_PATH=${{ env.LOG_PATH }}
           LIST_PATH=${{ env.LIST_PATH }}
-          # grep -oE "test_files\/[^[:space:]]+" "$LOG_PATH" > "$LIST_PATH"
+          POSTLIST_PATH=${{ env.POSTLIST_PATH }}
           grep -E "Copied|Deleted" "$LOG_PATH" | awk -F: '{print $2}' | awk '{print $1}' > "$LIST_PATH"
           echo "Uploaded files list saved to: $LIST_PATH"
-          cat "$LIST_PATH"
+          while IFS= read -r line; do
+            echo "/$line" >> "$POSTLIST_PATH"
+          done < "$LIST_PATH"
+          cat "$POSTLIST_PATH"
+
+      # - name: Initiate CloudFront invalidation for uploaded files
+      #   run: |
+      #     POSTLIST_PATH=${{ env.POSTLIST_PATH }}
+      #     DISTRIBUTION_ID=${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      #     if [ -f "$POSTLIST_PATH" ]; then
+      #       echo "Initiating CloudFront invalidation for distribution ID: $DISTRIBUTION_ID"
+      #       # aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+      #       aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths file://"$POSTLIST_PATH"
+      #       echo "CloudFront invalidation initiated."
+      #     else
+      #       echo "Postlist file $POSTLIST_PATH does not exist. Skipping CloudFront invalidation."
+      #     fi
  
