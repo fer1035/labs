@@ -109,7 +109,7 @@ jobs:
             # aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ --exact-timestamps --delete | tee -a "$LOG_PATH"
             # aws s3 sync "$TEST_PATH" s3://$BUCKET_NAME/ --delete | tee -a "$LOG_PATH"
             # rclone sync "$TEST_PATH" uploads-s3:"$BUCKET_NAME" --checksum --progress --log-level INFO | tee -a "$LOG_PATH"
-            rclone sync "$TEST_PATH" uploads-s3:"$BUCKET_NAME" --checksum --log-level INFO | tee -a "$LOG_PATH"
+            rclone sync "$TEST_PATH" uploads-s3:"$BUCKET_NAME" --checksum --log-level INFO 2>&1 | tee -a "$LOG_PATH"
             echo "Uploaded $TEST_PATH to S3 bucket: $BUCKET_NAME"
           else
             echo "File $TEST_PATH does not exist. Skipping upload."
