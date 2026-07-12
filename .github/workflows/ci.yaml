@@ -24,15 +24,6 @@ jobs:
         # with:
         #   fetch-depth: 0
 
-      # - name: Restore Git timestamps
-      #   uses: chetan/git-restore-mtime-action@v2
-
-      # - name: Log message
-      #   run: echo "Hello World! The workflow is running successfully."
-
-      # - name: Run a basic command
-      #   run: node --version
-
       # - name: Install AWS CLI
       #   run: |
       #     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -124,14 +115,14 @@ jobs:
 
       # - name: Initiate CloudFront invalidation for uploaded files
       #   run: |
-      #     POSTLIST_PATH=${{ env.POSTLIST_PATH }}
+      #     LIST_PATH=${{ env.LIST_PATH }}
       #     DISTRIBUTION_ID=${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
-      #     if [ -f "$POSTLIST_PATH" ]; then
+      #     if [ -f "$LIST_PATH" ] && [ ! -s "$LIST_PATH" ]; then
       #       echo "Initiating CloudFront invalidation for distribution ID: $DISTRIBUTION_ID"
       #       # aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
-      #       aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths file://"$POSTLIST_PATH"
+      #       aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "$(cat $LIST_PATH | tr '\n' ' ')"
       #       echo "CloudFront invalidation initiated."
       #     else
-      #       echo "Postlist file $POSTLIST_PATH does not exist. Skipping CloudFront invalidation."
+      #       echo "Paths list does not exist. Skipping CloudFront invalidation."
       #     fi
  
