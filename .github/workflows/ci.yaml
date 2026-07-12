@@ -12,7 +12,6 @@ env:
   TEST_PATH: ./test_files/aws-network/
   LOG_PATH: ./logs.txt
   LIST_PATH: ./list.txt
-  POSTLIST_PATH: ./postlist.txt
 
 jobs:
   pr:
@@ -88,12 +87,6 @@ jobs:
           fi
           echo "Creating new list file: $LIST_PATH"
           touch "$LIST_PATH"
-          if [ -f "$POSTLIST_PATH" ]; then
-            echo "Deleting existing postlist file: $POSTLIST_PATH"
-            rm "$POSTLIST_PATH"
-          fi
-          echo "Creating new postlist file: $POSTLIST_PATH"
-          touch "$POSTLIST_PATH"
 
       - name: Apt install rclone
         run: |
@@ -125,11 +118,7 @@ jobs:
         run: |
           LOG_PATH=${{ env.LOG_PATH }}
           LIST_PATH=${{ env.LIST_PATH }}
-          POSTLIST_PATH=${{ env.POSTLIST_PATH }}
           grep -E "Copied|Deleted" "$LOG_PATH" | awk -F: '{ print $2 }' | awk '{ $1 = "/" $1; print }' > "$LIST_PATH"
-          # while IFS= read -r line; do
-          #   echo "/$line" >> "$POSTLIST_PATH"
-          # done < "$LIST_PATH"
           echo "Uploaded files list saved to: $LIST_PATH"
           cat "$LIST_PATH"
 
