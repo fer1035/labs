@@ -10,6 +10,7 @@ env:
   TEST_PATH: ./test_files/aws-network/
   LOG_PATH: ./logs.txt
   LIST_PATH: ./list.txt
+  CF_INVALIDATION_JSON: ./invalidation.json
 
 jobs:
   pr:
@@ -104,15 +105,37 @@ jobs:
           grep -E "Copied|Deleted" "$LOG_PATH" | awk -F: '{ print $2 }' | awk '{ $1 = "/" $1; print }' > "$LIST_PATH"
           echo "Uploaded files list saved to: $LIST_PATH"
           cat "$LIST_PATH"
+      
+      - name: Create CloudFront batch invalidation JSON file
+        run: |
+          LIST_PATH=${{ env.LIST_PATH }}
+          CF_INVALIDATION_JSON=${{ env.CF_INVALIDATION_JSON }}
+          if [ -f "$LIST_PATH" ] && grep -q '[^[:space:]]' "$LIST_PATH"; then
+            ITEMS=$(cat "$LIST_PATH" | sed -e 's/^[[:space:]]*/"/' -e 's/[[:space:]]*$/"/' | paste -sd, -)
+            JSON_ITEMS="[${ITEMS}]"
+            cat <<EOF > "$CF_INVALIDATION_JSON"
+            {
+              "Paths": {
+                "Quantity": $(wc -l < "$LIST_PATH" | tr -d '[:space:]'),
+                "Items": ${JSON_ITEMS}
+              },
+              "CallerReference": "$(date +%s%N)"
+            }
+            EOF
+            echo "CloudFront batch invalidation JSON file created: $CF_INVALIDATION_JSON"
+          else
+            echo "Paths list does not exist. Skipping CloudFront batch invalidation JSON creation."
+          fi
 
       - name: Initiate CloudFront invalidation for uploaded files
         run: |
           LIST_PATH=${{ env.LIST_PATH }}
           DISTRIBUTION_ID=${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+          CF_INVALIDATION_JSON=${{ env.CF_INVALIDATION_JSON }}
           if [ -f "$LIST_PATH" ] && grep -q '[^[:space:]]' "$LIST_PATH"; then
             echo "Initiating CloudFront invalidation for distribution ID: $DISTRIBUTION_ID"
             # aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
-            aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "$(cat $LIST_PATH | tr '\n' ' ')"
+            aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --invalidation-batch file://"$CF_INVALIDATION_JSON"
             echo "CloudFront invalidation initiated."
           else
             echo "Paths list does not exist. Skipping CloudFront invalidation."
