@@ -113,7 +113,7 @@ jobs:
           if [ -f "$LIST_PATH" ] && grep -q '[^[:space:]]' "$LIST_PATH"; then
             ITEMS=$(cat "$LIST_PATH" | sed -e 's/^[[:space:]]*/"/' -e 's/[[:space:]]*$/"/' | paste -sd, -)
             JSON_ITEMS="[${ITEMS}]"
-            cat <<EOF > "$CF_INVALIDATION_JSON"
+            cat <<-EOF > "$CF_INVALIDATION_JSON"
             {
               "Paths": {
                 "Quantity": $(wc -l < "$LIST_PATH" | tr -d '[:space:]'),
