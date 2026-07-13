@@ -122,6 +122,7 @@ jobs:
               "CallerReference": "$(date +%s%N)"
             }
             EOF
+            
             echo "CloudFront batch invalidation JSON file created: $CF_INVALIDATION_JSON"
           else
             echo "Paths list does not exist. Skipping CloudFront batch invalidation JSON creation."
