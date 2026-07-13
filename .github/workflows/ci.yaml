@@ -109,7 +109,7 @@ jobs:
         run: |
           LIST_PATH=${{ env.LIST_PATH }}
           DISTRIBUTION_ID=${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
-          if [ -f "$LIST_PATH" ] && [ ! -s "$LIST_PATH" ]; then
+          if [ -f "$LIST_PATH" ] && grep -q '[^[:space:]]' "$LIST_PATH"; then
             echo "Initiating CloudFront invalidation for distribution ID: $DISTRIBUTION_ID"
             # aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
             aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "$(cat $LIST_PATH | tr '\n' ' ')"
