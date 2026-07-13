@@ -1,4 +1,4 @@
-module "network" {
+module "example" {
   source = "../../"
 
   application_name             = "aws_network"
