@@ -7,11 +7,10 @@ on: [pull_request]
 #     branches: [ main ]
 
 env:
-  AWS_REGION: us-east-1
-  BUCKET_NAME: fer1035-github-labs
   TEST_PATH: ./test_files/aws-network/
   LOG_PATH: ./logs.txt
   LIST_PATH: ./list.txt
+  CF_INVALIDATION_JSON: ./invalidation.json
 
 jobs:
   pr:
@@ -39,20 +38,14 @@ jobs:
         with:
           aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Print AWS STS identity
-        run: aws sts get-caller-identity
-
-      - name: Get PWD amd list files
-        run: |
-          echo "Current working directory: $(pwd)"
-          echo "Listing files in the current directory:"
-          ls -larth
+      # - name: Print AWS STS identity
+      #   run: aws sts get-caller-identity
 
       - name: Check if S3 bucket exists
         run: |
-          BUCKET_NAME=${{ env.BUCKET_NAME }}
+          BUCKET_NAME=${{ vars.S3_BUCKET_NAME }}
           if aws s3 ls "s3://$BUCKET_NAME" 2>&1 | grep -q 'NoSuchBucket'; then
             echo "S3 bucket does not exist. Creating..."
             aws s3 mb s3://$BUCKET_NAME
@@ -81,18 +74,18 @@ jobs:
 
       - name: Apt install rclone
         run: |
-          sudo apt-get update
+          # sudo apt-get update
           sudo apt-get install -y rclone
 
       - name: Configure rclone for S3
         run: |
-          AWS_REGION=${{ env.AWS_REGION }}
+          AWS_REGION=${{ vars.AWS_REGION }}
           rclone config create uploads-s3 s3 provider AWS env_auth true region $AWS_REGION
           # rclone config show uploads-s3
   
       - name: Upload to S3 bucket
         run: |
-          BUCKET_NAME=${{ env.BUCKET_NAME }}
+          BUCKET_NAME=${{ vars.S3_BUCKET_NAME }}
           TEST_PATH=${{ env.TEST_PATH }}
           LOG_PATH=${{ env.LOG_PATH }}
           if [ -f "$TEST_PATH" ] || [ -d "$TEST_PATH" ]; then
@@ -112,17 +105,40 @@ jobs:
           grep -E "Copied|Deleted" "$LOG_PATH" | awk -F: '{ print $2 }' | awk '{ $1 = "/" $1; print }' > "$LIST_PATH"
           echo "Uploaded files list saved to: $LIST_PATH"
           cat "$LIST_PATH"
+      
+      - name: Create CloudFront batch invalidation JSON file
+        run: |
+          LIST_PATH=${{ env.LIST_PATH }}
+          CF_INVALIDATION_JSON=${{ env.CF_INVALIDATION_JSON }}
+          if [ -f "$LIST_PATH" ] && grep -q '[^[:space:]]' "$LIST_PATH"; then
+            ITEMS=$(cat "$LIST_PATH" | sed -e 's/^[[:space:]]*/"/' -e 's/[[:space:]]*$/"/' | paste -sd, -)
+            JSON_ITEMS="[${ITEMS}]"
+            cat <<EOF > "$CF_INVALIDATION_JSON"
+            {
+              "Paths": {
+                "Quantity": $(wc -l < "$LIST_PATH" | tr -d '[:space:]'),
+                "Items": ${JSON_ITEMS}
+              },
+              "CallerReference": "$(date +%s%N)"
+            }
+          EOF
 
-      # - name: Initiate CloudFront invalidation for uploaded files
-      #   run: |
-      #     LIST_PATH=${{ env.LIST_PATH }}
-      #     DISTRIBUTION_ID=${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
-      #     if [ -f "$LIST_PATH" ] && [ ! -s "$LIST_PATH" ]; then
-      #       echo "Initiating CloudFront invalidation for distribution ID: $DISTRIBUTION_ID"
-      #       # aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
-      #       aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "$(cat $LIST_PATH | tr '\n' ' ')"
-      #       echo "CloudFront invalidation initiated."
-      #     else
-      #       echo "Paths list does not exist. Skipping CloudFront invalidation."
-      #     fi
+            echo "CloudFront batch invalidation JSON file created: $CF_INVALIDATION_JSON"
+          else
+            echo "Paths list does not exist. Skipping CloudFront batch invalidation JSON creation."
+          fi
+
+      - name: Initiate CloudFront invalidation for uploaded files
+        run: |
+          LIST_PATH=${{ env.LIST_PATH }}
+          DISTRIBUTION_ID=${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+          CF_INVALIDATION_JSON=${{ env.CF_INVALIDATION_JSON }}
+          if [ -f "$LIST_PATH" ] && grep -q '[^[:space:]]' "$LIST_PATH"; then
+            echo "Initiating CloudFront invalidation for distribution ID: $DISTRIBUTION_ID"
+            # aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+            aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --invalidation-batch file://"$CF_INVALIDATION_JSON"
+            echo "CloudFront invalidation initiated."
+          else
+            echo "Paths list does not exist. Skipping CloudFront invalidation."
+          fi
  
