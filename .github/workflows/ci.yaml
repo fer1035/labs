@@ -46,6 +46,7 @@ jobs:
           role-to-assume: arn:aws:iam::531133914787:role/labs-role
           role-session-name: githubsession
           aws-region: us-east-1
+          audience: sts.amazonaws.com
 
       - name: Print AWS STS identity
         run: aws sts get-caller-identity
